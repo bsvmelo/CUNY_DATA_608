@@ -5,6 +5,8 @@ library(shiny)
 library(shinydashboard)
 library(quantmod)
 library(PerformanceAnalytics)
+library(collapsibleTree)
+#install.packages("collapsibleTree")
 
 #dygraph
 
@@ -162,6 +164,32 @@ asset_alloc.pivot<-pivot_longer(asset_alloc,-1,names_to = "Asset_Type",values_to
 asset_alloc_strat<-dt%>%group_by(Pf_category,fund_strategy)%>% select(Pf_category,fund_strategy,contains("_alloca")) %>% summarize(across(where(is.numeric),sum))
 asset_alloc_strat.pivot<-pivot_longer(asset_alloc_strat,-c(1,2),names_to = "Asset_Type",values_to = "Allocation")
 
+
+asset_alloc_strat_fund<-dt%>%group_by(Pf_category,fund_strategy,fund_short_name)%>% select(Pf_category,fund_strategy,fund_short_name,contains("_alloca")) %>% summarize(across(where(is.numeric),sum))
+asset_alloc_strat_fund.pivot<-pivot_longer(asset_alloc_strat_fund,-c(1,2,3),names_to = "Asset_Type",values_to = "Allocation")
+
+#tree
+asset_alloc_tree<-asset_alloc_strat_fund.pivot%>%group_by(Pf_category,fund_strategy,fund_short_name)%>%summarise(sum=sum(Allocation))
+
+#Bond Rating
+dt.ratings<-as.data.frame(map2(dt %>% select(starts_with("fund_bonds_")), 1/18,  ~ .x *.y))
+colnames(dt.ratings)<-paste0(sec.bonds,"_rtg")
+dt<-cbind(dt,dt.ratings[2:9])
+rating_alloc<-dt%>%group_by(Pf_category)%>% select(Pf_category,contains("_rtg")) %>% summarize(across(where(is.numeric),sum))
+colnames(rating_alloc)[2:9]<-str_to_upper(sec.bonds[2:9])
+rating_alloc.pivot<-pivot_longer(rating_alloc,-1,names_to = "Ratings",values_to = "Allocation")
+rating_alloc.pivot[4]<-rep(8:1,3)
+colnames(rating_alloc.pivot)[4]<-"rtg"
+
+
+#equity sector
+dt.sector<-as.data.frame(map2(dt %>% select(starts_with("fund_sector_")), 1/18,  ~ .x *.y))
+colnames(dt.sector)<-paste0(sec.eq,"_seceq")
+dt<-cbind(dt,dt.sector)
+sec_alloc<-dt%>%group_by(Pf_category)%>% select(Pf_category,contains("_seceq")) %>% summarize(across(where(is.numeric),sum))
+colnames(sec_alloc)[2:12]<-sec.eq
+sec_alloc.pivot<-pivot_longer(sec_alloc,-1,names_to = "Sector",values_to = "Allocation")
+
 #Asset name conversion
 ttt<-unlist(asset_alloc.pivot[2])
 ddd<-list(str_to_title(gsub(".*_(.+)_.*", "\\1", ttt)))
@@ -170,6 +198,12 @@ asset_alloc.pivot[,2]=ddd
 tttt<-unlist(asset_alloc_strat.pivot[3])
 dddd<-list(str_to_title(gsub(".*_(.+)_.*", "\\1", tttt)))
 asset_alloc_strat.pivot[,3]=dddd
+
+ttttt<-unlist(asset_alloc_strat_fund.pivot[4])
+ddddd<-list(str_to_title(gsub(".*_(.+)_.*", "\\1", ttttt)))
+asset_alloc_strat_fund.pivot[,4]=ddddd
+
+
 
 
 
@@ -419,15 +453,16 @@ risk_levels<-c("Conservative","Moderate","Aggressive")
 ui <-fluidPage(
 #     
     # App title ----
-    titlePanel(h1("Portfolio Comparison Visualization Tool", style='background-color:#BD9060;padding-left: 15px')),
-
+    titlePanel(h1("Portfolio Comparison Visualization Tool", style='background-color:#FFDEAD;padding-left: 15px')),
+    #BD9060
       
     # Sidebar layout with input and output definitions ----
     sidebarLayout(
 
         # Sidebar panel for inputs ----
         sidebarPanel(width=2,
-          tags$style(".well {background: #7b899e;border: 0px;}"),
+          tags$style(".well {background: #FFE4C4;border: 0px;}"),
+          #7b899e
             # Input: Select the tolerance type ----
             #radioButtons("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate"),
             checkboxGroupInput("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate")),
@@ -443,21 +478,43 @@ ui <-fluidPage(
                         tabPanel("Summary", 
                         hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
                         fluidRow(
-                            column(4,plotOutput('table1')),
-                            column(4,plotOutput('plot1')),
-                            column(4,plotOutput('plot2')),
+                            column(6,plotOutput('table1')),
+                            column(6,plotOutput('plot1'))
+                            #column(4,plotOutput('plot2')),
                         ),
                         hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
                         fluidRow(
-                            column(6,plotOutput('plot3')),
+                            column(6,plotOutput('plot2')),
                             br(),
-                            column(6,plotOutput('plot4'))
+                            column(6,plotOutput('plot3'))
                         )
                         ),
 
-                        tabPanel("Performance Overview", plotOutput('plot5')),
-
-                        tabPanel("Risk Analysis", tableOutput("table"))
+                        tabPanel("Allocation Overview", 
+                        hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                        fluidRow(
+                          column(6,plotOutput('plot4')),
+                          column(6,plotOutput('plot5'))
+                          
+                        ),         
+                                 
+                      hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                       fluidRow(
+                         column(12,plotOutput('plot6'))
+                               ),
+                       hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                       # fluidRow(
+                       #   column(12,plotOutput('plot5'))
+                       # )
+                       fluidRow(
+                         column(12,collapsibleTreeOutput('plot7'))
+                       ),
+                                
+                       fluidRow(
+                         column(12,plotOutput('plot8'))
+                       )
+                        ),
+                        tabPanel("Performance Analysis", tableOutput("table"))
             )
 
         )
@@ -475,7 +532,7 @@ server <- function(input, output) {
   fdd.1<-table.Drawdowns(ret.stream.pivot.11)
   
   
-  place_plot3<- reactive({ret.stream.pivot.ggp %>% filter(.data$Pf_category %in% .env$input$dist) %>% arrange(Date) %>%
+  place_plot2<- reactive({ret.stream.pivot.ggp %>% filter(.data$Pf_category %in% .env$input$dist) %>% arrange(Date) %>%
       ggplot(aes(x=Date,y=cum.ret,group=Pf_category,color=Pf_category))+geom_line(show.legend = FALSE, size=1) + geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)+ geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5) +
       theme_gray()+ annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .1) +labs(title = "Growth of $1", subtitle = "and drawdowns",x = NULL,  y = NULL) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),plot.title = element_text(face = "bold",size = 20))})
   #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)
@@ -484,10 +541,10 @@ server <- function(input, output) {
   # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
   # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
   
-  output$plot3 <- renderPlot({ place_plot3() })
+  output$plot2 <- renderPlot({ place_plot2() })
   
   #Drawdown Plot
-  output$plot4 <-renderPlot({
+  output$plot3 <-renderPlot({
     
     dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
     ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
@@ -516,6 +573,8 @@ server <- function(input, output) {
   
   
   #Asset allocation table
+  
+  #by Asset Allocation
   level_order_asset <- unique(factor(asset_alloc.pivot$Asset_Type, level = c('Stocks','Bonds','Convertible','Cash','Preferred','Others')))
   
   place_plot1<- reactive({asset_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
@@ -528,14 +587,68 @@ server <- function(input, output) {
   
   output$plot1 <- renderPlot({ place_plot1() })
 
+  #By rating
+  #level_order_ratings <- factor(rating_alloc.pivot$Ratings, level = c('AAA','AA','A','BBB','BB','B','BELOW B','OTHERS'))
   
-  #facet_grid(fct_relevel(Pf_category,'Aggressive','Moderate','Conservative') ~ fct_relevel(fund_strategy,'U.S. Equity','Sector Equity','International Equity','Taxable Bond', 'Municipal Bond', 'Alternative'))
-
-  place_plot5<- reactive({asset_alloc_strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
+  place_plot4<- reactive({rating_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>% 
+      ggplot(aes(x=Pf_category,y=reorder(Ratings,rtg),group=Pf_category,fill=Allocation))+  scale_fill_distiller(palette = "Spectral") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Bond Ratings Breakdown (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 20),text = element_text(size=16),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+  #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)  #scale_fill_distiller(palette = "Spectral") scale_fill_fermenter(n.breaks = 9, palette = "PuOr")
+  # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
+  # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
+  # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
+  # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
+  
+  output$plot4 <- renderPlot({ place_plot4() })
+  
+  #by equity sector
+  place_plot5<- reactive({sec_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>% 
+      ggplot(aes(x=Pf_category,y=reorder(Sector,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_distiller(palette = "Spectral") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Equity Sector Breakdown (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 20),text = element_text(size=16),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+  #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)  #scale_fill_distiller(palette = "Spectral") scale_fill_fermenter(n.breaks = 9, palette = "PuOr")
+  # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
+  # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
+  # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
+  # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
+  
+  output$plot5 <- renderPlot({ place_plot5() }) 
+  
+  #by Strategy
+  place_plot6<- reactive({asset_alloc_strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
       #ggplot(aes(x=reorder(Asset_Type,Allocation),y=round(Allocation*100,0),fill=fund_strategy))+  geom_bar(stat = 'identity', position = 'stack') + guides(x = guide_axis(angle = 45)) + facet_grid(~ Pf_category)+labs(x = NULL, y = NULL,title = NULL) + scale_x_discrete(position = "bottom") + theme(text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
-      ggplot(aes(x=Pf_category,y=fund_strategy,fill=Allocation))+ geom_tile(color = "white") +scale_fill_gradient2(low = "#DCDCDC", mid= "#F5DEB3", high = "#DAA520", midpoint=.02) + guides(x = guide_axis(angle = 90)) + facet_grid(~ fct_relevel(Asset_Type,'Stocks','Bonds','Convertible','Cash','Preferre','Others'))+labs(x = NULL, y = NULL,title = NULL) + scale_x_discrete(position = "bottom") + theme(text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank() ) })
+      ggplot(aes(x=Pf_category,y=fund_strategy,fill=Allocation))+ geom_tile(color = "white") +scale_fill_gradient2(low = "#FFFFFF", mid= "#F5F5F5", high = "#DAA520", midpoint=.02) + guides(x = guide_axis(angle = 90)) + facet_grid(~ fct_relevel(Asset_Type,'Stocks','Bonds','Convertible','Cash','Preferred','Others'))+labs(x = NULL, y = NULL,title = "Strategy Asset Allocation Breakdown") + scale_x_discrete(position = "bottom") + theme(plot.title = element_text(face = "bold",size=20), text = element_text(size=16),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank() ) })
   
-  output$plot5 <- renderPlot({ place_plot5() })  
+  output$plot6 <- renderPlot({ place_plot6() })  
+  
+  
+  
+  #by Fund
+  
+  #Tree
+  #place_plot5 <- reactive({asset_alloc_tree %>% filter(.data$Pf_category %in% .env$input$dist)})
+  asset_alloc_tree<-asset_alloc_strat_fund.pivot%>%group_by(Pf_category,fund_strategy,fund_short_name,Asset_Type)%>%summarise(sum=sum(round(Allocation*100,0)))
+  
+  hierarchy<-c("Pf_category","fund_strategy","fund_short_name","Asset_Type","sum")
+  
+  Allocation_Tree <- asset_alloc_tree #%>% filter(Pf_category %in% input$dist)
+  
+  output$plot7 <- renderCollapsibleTree({collapsibleTree(Allocation_Tree, hierarchy, width = "100%",height = "100%")})
+  
+  #collapsibleTree( warpbreaks, c("wool", "tension", "breaks"))
+  
+  #heatmap
+  gg_facet_nrow <- function(p) {
+    n <- length(unique(ggplot_build(p)$data[[1]]$PANEL))
+    par <- ggplot_build(p)$layout$facet$params
+    wrap_dims(n, par$nrow, par$ncol)
+  }
+  he <- reactive(gg_facet_nrow(place_plot8()))
+  
+  place_plot8<- reactive({asset_alloc_strat_fund.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
+      #ggplot(aes(x=reorder(Asset_Type,Allocation),y=round(Allocation*100,0),fill=fund_strategy))+  geom_bar(stat = 'identity', position = 'stack') + guides(x = guide_axis(angle = 45)) + facet_grid(~ Pf_category)+labs(x = NULL, y = NULL,title = NULL) + scale_x_discrete(position = "bottom") + theme(text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+      ggplot(aes(x=reorder(fund_strategy,Allocation),y=fund_short_name,fill=Allocation))+ geom_tile(color = "white") +scale_fill_gradient2(low = "#F8F8FF", mid= "#F5F5F5", high = "#DAA520", midpoint=.02) + guides(x = guide_axis(angle = 90)) + facet_grid(Pf_category ~ fct_relevel(Asset_Type,'Stocks','Bonds','Convertible','Cash','Preferred','Others'))+labs(x = NULL, y = NULL,title = "Fund Asset Allocation & Strategy Breakdown") + scale_x_discrete(position = "bottom") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank() ) })
+  
+  output$plot8 <- renderPlot({ place_plot8 () },height = function(){he()*300})   
+  
+  #asset_alloc_strat_fund.pivot
   
   
   #scale_fill_gradient2(low = "yellow",mid = "green",high = "orange",midpoint = .02)
