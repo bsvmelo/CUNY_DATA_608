@@ -210,24 +210,24 @@ asset_alloc_strat_fund.pivot[,4]=ddddd
 #charts approved
 
 # Facet grid by Fund strategy with VaRs
-ret.stream.strat.pivot %>% 
-    ggplot(aes(x = Return, fill = Pf_category)) + 
-    geom_density(aes(fill = Pf_category, colour = Pf_category)) +
-    #geom_histogram(alpha = 0.25, binwidth = .01) + #geom_vline(aes(xintercept = quantile(Return,0.05)), data=ret.stream.strat.pivot, colour = "darkgrey", alpha = 0.5) + 
-    #annotate(geom = "curve", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.01, y = 70, xend = quantile(ret.stream.strat.pivot$Return,0.05), yend = 60,curvature = .3, arrow = arrow(length = unit(2, "mm"))) +
-    #annotate(geom = "text", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.03, y = 73, label = quantile(ret.stream.strat.pivot$Return,0.05), hjust = "left") +
-    stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
-    facet_grid(fct_relevel(Pf_category,'Aggressive','Moderate','Conservative') ~ fct_relevel(fund_strategy,'U.S. Equity','Sector Equity','International Equity','Taxable Bond', 'Municipal Bond', 'Alternative')) +
-    theme(legend.position = "none")
-
-ret.stream.strat.pivot %>% 
-    ggplot(aes(x = Return, fill = Pf_category)) + 
-    geom_density(aes(fill = Pf_category, colour = Pf_category)) +
-    #geom_histogram(alpha = 0.25, binwidth = .01) + #geom_vline(aes(xintercept = quantile(Return,0.05)), data=ret.stream.strat.pivot, colour = "darkgrey", alpha = 0.5) + 
-    #annotate(geom = "curve", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.01, y = 70, xend = quantile(ret.stream.strat.pivot$Return,0.05), yend = 60,curvature = .3, arrow = arrow(length = unit(2, "mm"))) +
-    #annotate(geom = "text", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.03, y = 73, label = quantile(ret.stream.strat.pivot$Return,0.05), hjust = "left") +
-    stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
-    facet_grid(fct_relevel(Pf_category,'Aggressive','Moderate','Conservative') ~ .) + theme(legend.position = "none")
+# ret.stream.strat.pivot %>% 
+#     ggplot(aes(x = Return, fill = Pf_category)) + 
+#     geom_density(aes(fill = Pf_category, colour = Pf_category)) +
+#     #geom_histogram(alpha = 0.25, binwidth = .01) + #geom_vline(aes(xintercept = quantile(Return,0.05)), data=ret.stream.strat.pivot, colour = "darkgrey", alpha = 0.5) + 
+#     #annotate(geom = "curve", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.01, y = 70, xend = quantile(ret.stream.strat.pivot$Return,0.05), yend = 60,curvature = .3, arrow = arrow(length = unit(2, "mm"))) +
+#     #annotate(geom = "text", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.03, y = 73, label = quantile(ret.stream.strat.pivot$Return,0.05), hjust = "left") +
+#     stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
+#     facet_grid(fct_relevel(Pf_category,'Aggressive','Moderate','Conservative') ~ fct_relevel(fund_strategy,'U.S. Equity','Sector Equity','International Equity','Taxable Bond', 'Municipal Bond', 'Alternative')) +
+#     theme(legend.position = "none")
+# 
+# ret.stream.strat.pivot %>% 
+#     ggplot(aes(x = Return, fill = Pf_category)) + 
+#     geom_density(aes(fill = Pf_category, colour = Pf_category)) +
+#     #geom_histogram(alpha = 0.25, binwidth = .01) + #geom_vline(aes(xintercept = quantile(Return,0.05)), data=ret.stream.strat.pivot, colour = "darkgrey", alpha = 0.5) + 
+#     #annotate(geom = "curve", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.01, y = 70, xend = quantile(ret.stream.strat.pivot$Return,0.05), yend = 60,curvature = .3, arrow = arrow(length = unit(2, "mm"))) +
+#     #annotate(geom = "text", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.03, y = 73, label = quantile(ret.stream.strat.pivot$Return,0.05), hjust = "left") +
+#     stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
+#     facet_grid(fct_relevel(Pf_category,'Aggressive','Moderate','Conservative') ~ .) + theme(legend.position = "none")
 
 # 
 # ui <- dashboardPage(
@@ -514,7 +514,29 @@ ui <-fluidPage(
                          column(12,plotOutput('plot8'))
                        )
                         ),
-                        tabPanel("Performance Analysis", tableOutput("table"))
+                      
+                        tabPanel("Risk Analysis",
+                            hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                            fluidRow(
+                              column(12,plotOutput('plot9'))
+                            ),
+                            hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                            fluidRow(
+                              column(12,plotOutput('plot10'))
+                            )
+                                 
+                                 ),
+                        tabPanel("Performance Analysis",
+                               hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                               fluidRow(
+                                 column(12,plotOutput('plot11'))
+                               ),
+                               hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                               fluidRow(
+                                 column(12,plotOutput('plot12'))
+                               )
+                               
+                      )
             )
 
         )
@@ -641,12 +663,82 @@ server <- function(input, output) {
     wrap_dims(n, par$nrow, par$ncol)
   }
   he <- reactive(gg_facet_nrow(place_plot8()))
-  
+  hf <- reactive(gg_facet_nrow(place_plot9()))
+  hg <- reactive(gg_facet_nrow(place_plot10()))
+  hh <- reactive(gg_facet_nrow(place_plot12()))
   place_plot8<- reactive({asset_alloc_strat_fund.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
       #ggplot(aes(x=reorder(Asset_Type,Allocation),y=round(Allocation*100,0),fill=fund_strategy))+  geom_bar(stat = 'identity', position = 'stack') + guides(x = guide_axis(angle = 45)) + facet_grid(~ Pf_category)+labs(x = NULL, y = NULL,title = NULL) + scale_x_discrete(position = "bottom") + theme(text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
       ggplot(aes(x=reorder(fund_strategy,Allocation),y=fund_short_name,fill=Allocation))+ geom_tile(color = "white") +scale_fill_gradient2(low = "#F8F8FF", mid= "#F5F5F5", high = "#DAA520", midpoint=.02) + guides(x = guide_axis(angle = 90)) + facet_grid(Pf_category ~ fct_relevel(Asset_Type,'Stocks','Bonds','Convertible','Cash','Preferred','Others'))+labs(x = NULL, y = NULL,title = "Fund Asset Allocation & Strategy Breakdown") + scale_x_discrete(position = "bottom") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank() ) })
   
   output$plot8 <- renderPlot({ place_plot8 () },height = function(){he()*300})   
+  
+  #risk analysis
+  
+  level_order <- factor(tableb$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
+  
+  place_plot9 <- reactive({ ret.stream.strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>% 
+      # .data$Pf_category <- factor(.data$Pf_category, level = c('Aggressive','Moderate','Conservative')) %>%
+      ggplot(aes(x = round(Return*100,0), fill = Pf_category)) + geom_density(aes(fill = Pf_category, colour = Pf_category)) +
+      stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
+      facet_grid( fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative')) ~ .,switch="y") + scale_x_continuous(n.breaks = 10) +
+      labs(x = NULL, y = NULL,title = "97.5% Value-at-Risk (VaR) Comparison", subtitle = "VaR represented by vertical lines") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
+  #fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative'))
+  output$plot9 <- renderPlot({ place_plot9 () },height = function(){hf()*400})
+  
+  place_plot10 <-reactive({ret.stream.strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
+      ggplot(aes(x = round(Return*100,0), fill = Pf_category))+ geom_density(aes(fill = Pf_category, colour = Pf_category)) +
+      stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
+      facet_grid(fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative')) ~ fct_relevel(fund_strategy,'U.S. Equity','Sector Equity','International Equity','Taxable Bond', 'Municipal Bond', 'Alternative'),switch="y") +
+      labs(x = NULL, y = NULL,title = "97.5% Value-at-Risk (VaR) Comparison by Strategy", subtitle = "VaR represented by vertical lines") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
+  
+  
+  output$plot10 <- renderPlot({ place_plot10 () },height = function(){hg()*150})
+  
+  
+  
+  #performance analysis
+  
+  dataforplot <- reactive({ plot_data <- ret.stream.strat.pivot %>% filter(Pf_category %in% input$dist)
+                            plot_data$Pf_category <- factor(plot_data$Pf_category,levels =c('Aggressive','Moderate','Conservative'))
+                            return(plot_data)
+                          })
+  
+  place_plot11<- reactive ({
+    ggplot(data = dataforplot(),aes(x = round(Return*100,0), fill = Pf_category)) + geom_density(aes(fill = Pf_category, colour = Pf_category)) +
+      stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
+      facet_grid( Pf_category ~ .,switch="y") + scale_x_continuous(n.breaks = 10) +
+      labs(x = NULL, y = NULL,title = "97.5% Value-at-Risk (VaR) Comparison", subtitle = "VaR represented by vertical lines") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
+  output$plot11 <- renderPlot({ place_plot11 () })
+  
+  
+  
+  
+  dataforplot_12 <- reactive({ dt1 <- dt %>% filter(Pf_category %in% input$dist) %>% select(-fund_strategy)
+                              dt1$Pf_category <- factor(dt1$Pf_category,levels =c('Aggressive','Moderate','Conservative'))
+                              return(dt1)})
+      
+  place_plot12<- reactive ({
+    ggplot(dt, aes(x=fund_stdev_3years,y=round(fund_return_3years*100,0)))+geom_point(data=dataforplot_12(),colour = "grey70",alpha=1, size=2) + geom_point(aes(colour = fund_strategy),alpha=1, size=2) +
+    facet_grid(Pf_category~fund_strategy,switch="y")  +
+    labs(x = "Volatility", y = "Return",title = "Return & Volatility by Strategy") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none") })
+  
+  output$plot12 <- renderPlot({ place_plot12 () },height = function(){hh()*150})
+  
+  
+  
+  # ret.stream.strat.pivot %>% 
+  #   ggplot(aes(x = Return, fill = Pf_category)) + 
+  #   geom_density(aes(fill = Pf_category, colour = Pf_category)) +
+  #   #geom_histogram(alpha = 0.25, binwidth = .01) + #geom_vline(aes(xintercept = quantile(Return,0.05)), data=ret.stream.strat.pivot, colour = "darkgrey", alpha = 0.5) + 
+  #   #annotate(geom = "curve", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.01, y = 70, xend = quantile(ret.stream.strat.pivot$Return,0.05), yend = 60,curvature = .3, arrow = arrow(length = unit(2, "mm"))) +
+  #   #annotate(geom = "text", x = quantile(ret.stream.strat.pivot$Return,0.05)+0.03, y = 73, label = quantile(ret.stream.strat.pivot$Return,0.05), hjust = "left") +
+  #   stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
+  #   facet_grid(fct_relevel(Pf_category,'Aggressive','Moderate','Conservative') ~ fct_relevel(fund_strategy,'U.S. Equity','Sector Equity','International Equity','Taxable Bond', 'Municipal Bond', 'Alternative')) +
+  #   theme(legend.position = "none")
+  
+
+  
+  
   
   #asset_alloc_strat_fund.pivot
   
