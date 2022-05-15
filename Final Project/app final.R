@@ -150,6 +150,29 @@ colnames(ret.stream.strat.pivot)[5]<-"Date"
 ret.stream.strat.pivot$Date<-as.Date(ret.stream.strat.pivot$Date, "%m/%d/%Y")
 ret.stream.strat.pivot <- subset(ret.stream.strat.pivot, select=c(5,4,1,2))
 
+#asset allocation
+#dt.test<-dt%>%summarise(across(where(starts_with("asset_")))*1/18)
+#dt.test1<-dt
+dt.test<-as.data.frame(map2(dt %>% select(starts_with("asset_")), 1/18,  ~ .x *.y))
+colnames(dt.test)<-paste0(colnames(dt.test),"_alloca")
+dt<-cbind(dt,dt.test)
+asset_alloc<-dt%>%group_by(Pf_category)%>% select(Pf_category,contains("_alloca")) %>% summarize(across(where(is.numeric),sum))
+asset_alloc.pivot<-pivot_longer(asset_alloc,-1,names_to = "Asset_Type",values_to = "Allocation")
+
+asset_alloc_strat<-dt%>%group_by(Pf_category,fund_strategy)%>% select(Pf_category,fund_strategy,contains("_alloca")) %>% summarize(across(where(is.numeric),sum))
+asset_alloc_strat.pivot<-pivot_longer(asset_alloc_strat,-c(1,2),names_to = "Asset_Type",values_to = "Allocation")
+
+#Asset name conversion
+ttt<-unlist(asset_alloc.pivot[2])
+ddd<-list(str_to_title(gsub(".*_(.+)_.*", "\\1", ttt)))
+asset_alloc.pivot[,2]=ddd
+
+tttt<-unlist(asset_alloc_strat.pivot[3])
+dddd<-list(str_to_title(gsub(".*_(.+)_.*", "\\1", tttt)))
+asset_alloc_strat.pivot[,3]=dddd
+
+
+
 #charts approved
 
 # Facet grid by Fund strategy with VaRs
@@ -201,11 +224,11 @@ ret.stream.strat.pivot %>%
 risk_levels<-c("Conservative","Moderate","Aggressive")
 
 # Define UI for application that draws a histogram
-ui <- dashboardPage(
-    dashboardHeader(title = "Portfolio Comparison Dashboard"),
-    dashboardSidebar(
-            checkboxGroupInput("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate")
-    ),
+# ui <- dashboardPage(
+#     dashboardHeader(title = "Portfolio Comparison Dashboard"),
+#     dashboardSidebar(
+#             checkboxGroupInput("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate")
+#     ),
     
     # dashboardBody(
     #   tabItems(
@@ -220,287 +243,371 @@ ui <- dashboardPage(
     #     )
     #   )
     # )
-    dashboardBody(
-        # infoBoxes with fill=FALSE
-       #fluidRow(width=12,box(p("3-year Return"))),
-
-        # fluidRow(
-        #          column(2,box(p(""),background = 'black')),
-        #          column(10,valueBoxOutput("info_box",width=4))
-        #          ),
-      
-        fluidRow(
-          column(6,plotOutput('table1')),
-          column(6,tableOutput('table2'))
-        ),
-      
-        # fluidRow(
-        #     # A static infoBox
-        #     #infoBox("Return", , icon = icon("credit-card")),
-        #     # Dynamic infoBoxes
-        #     column(2,box(p("3-year Return"))),
-        #     column(10,valueBoxOutput("returnBox1",width = 4))
-        #     ),
-        # fluidRow(
-        #     column(2,box(p("Volatility"))),
-        #     column(10,valueBoxOutput("returnBox2",width = 4))
-        #     ),
-        # fluidRow(
-        #   column(2,box(p("Sharpe-Ratio"))),
-        #   column(10,valueBoxOutput("returnBox3",width = 4))
-        #     ),   
-            
-        fluidRow(
-          column(6,plotOutput('plot1')),
-          column(6,plotOutput('plot2'))
-        )   
-        
-    )
-)
-server <- function(input, output) {
-    # output$returnBox <- renderValueBox({
-    #     
-    #     tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
-    #         select(Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs)) 
-    #     valueBox("Return",tablea, icon = icon("list"),color = "purple")
-    #     # infoBox(
-    #     #     "Return",tablea, icon = icon("list"),
-    #     #     color = "purple"
-    #     #)
-    # })
-    # output$TitleBox <-renderInfoBox({
+    # dashboardBody(
+    #   #tabItems(
+    #     # infoBoxes with fill=FALSE
+    #    #fluidRow(width=12,box(p("3-year Return"))),
     # 
-    #   infoBox("Return", icon=NULL, color="aqua", width=4)  
+    #     # fluidRow(
+    #     #          column(2,box(p(""),background = 'black')),
+    #     #          column(10,valueBoxOutput("info_box",width=4))
+    #     #          ),
+    #     #tabItem(tabName = "Summary",
+    #     fluidRow(
+    #       column(6,plotOutput('table1')),
+    #       column(6,plotOutput('plot1'))
+    #     ),
+    #   
+    #     # fluidRow(
+    #     #     # A static infoBox
+    #     #     #infoBox("Return", , icon = icon("credit-card")),
+    #     #     # Dynamic infoBoxes
+    #     #     column(2,box(p("3-year Return"))),
+    #     #     column(10,valueBoxOutput("returnBox1",width = 4))
+    #     #     ),
+    #     # fluidRow(
+    #     #     column(2,box(p("Volatility"))),
+    #     #     column(10,valueBoxOutput("returnBox2",width = 4))
+    #     #     ),
+    #     # fluidRow(
+    #     #   column(2,box(p("Sharpe-Ratio"))),
+    #     #   column(10,valueBoxOutput("returnBox3",width = 4))
+    #     #     ),   
     #         
-    # })
+    #     fluidRow(
+    #       column(6,plotOutput('plot2')),
+    #       column(6,plotOutput('plot3'))
+    #     )   
+    #     )
+        #tabItem(tabName = "Breakdowns")
     
-    #Return 3Years
-#   output$info_box <- renderUI({
+# server <- function(input, output) {
+#     # output$returnBox <- renderValueBox({
+#     #     
+#     #     tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
+#     #         select(Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs)) 
+#     #     valueBox("Return",tablea, icon = icon("list"),color = "purple")
+#     #     # infoBox(
+#     #     #     "Return",tablea, icon = icon("list"),
+#     #     #     color = "purple"
+#     #     #)
+#     # })
+#     # output$TitleBox <-renderInfoBox({
+#     # 
+#     #   infoBox("Return", icon=NULL, color="aqua", width=4)  
+#     #         
+#     # })
 #     
-#     tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
-#       select(Pf_category,Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
-#     ss <- (length(tablea$Fund_Return_3_yrs))
-#     lapply(1:ss, function(a) {
-#       
-#       valueBox(subtitle = NULL, value=tags$p(tags$span(tablea[[a,1]], style = "float:center"), style = "font-size: 50%"),icon=NULL,color = "aqua",width = 4)})
-#   })  
-#     output$returnBox1 <- renderUI({
-#              
-#             tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
-#                  select(Pf_category,Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
-#              ss <- (length(tablea$Fund_Return_3_yrs))
+#     #Return 3Years
+# #   output$info_box <- renderUI({
+# #     
+# #     tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
+# #       select(Pf_category,Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
+# #     ss <- (length(tablea$Fund_Return_3_yrs))
+# #     lapply(1:ss, function(a) {
+# #       
+# #       valueBox(subtitle = NULL, value=tags$p(tags$span(tablea[[a,1]], style = "float:center"), style = "font-size: 50%"),icon=NULL,color = "aqua",width = 4)})
+# #   })  
+# #     output$returnBox1 <- renderUI({
+# #              
+# #             tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
+# #                  select(Pf_category,Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
+# #              ss <- (length(tablea$Fund_Return_3_yrs))
+# # 
+# #              #category<-reactiveValues(input$dist)
+# #              #ss<-dim(tablea[1])
+# #              #ss<-2
+# #             
+# #              lapply(1:ss, function(a) {
+# #                 
+# #                 valueBox(subtitle = NULL ,value=tags$p(paste0(round(tablea[[a,2]]*100,1),"%"),style = "font-size: 50%;"),icon=NULL,color = "purple")})
+# #             })
+# # #
+# #     output$returnBox2 <- renderUI({
+# #       
+# #       tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
+# #         select(Pf_category,Risk_3_yrs,Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
+# #       ss <- (length(tablea$Risk_3_yrs))
+# #       
+# #       #category<-reactiveValues(input$dist)
+# #       #ss<-dim(tablea[1])
+# #       #ss<-2
+# #       
+# #       lapply(1:ss, function(a) {
+# #         
+# #         valueBox(subtitle = NULL,value=tags$p(paste0(round(tablea[[a,2]]*1,1),"%"),style = "font-size: 50%;"),icon=NULL,color = "purple")})
+# #     })        
+# #     output$returnBox3 <- renderUI({
+# #       
+# #       tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
+# #         select(Pf_category,Sharpe_3_yrs,Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
+# #       ss <- (length(tablea$Sharpe_3_yrs))
+# #       
+# #       #category<-reactiveValues(input$dist)
+# #       #ss<-dim(tablea[1])
+# #       #ss<-2
+# #       
+# #       lapply(1:ss, function(a) {
+# #         
+# #         valueBox(subtitle = NULL,value=tags$p(paste0(round(tablea[[a,2]]*1,1),""),style = "font-size: 50%;"),icon=NULL,color = "purple")})
+# #     })  
+#         
+#         ret.stream.pivot.1 <- ret.stream.pivot %>% filter(Pf_category == "Conservative") %>% select(Date,Return)
+#         ret.stream.pivot.11<-xts(x = ret.stream.pivot.1[, -1],order.by = as.Date(data$Date))
+#         fdd.1<-table.Drawdowns(ret.stream.pivot.11)
+#     
+#         place_plot2<- reactive({ret.stream.pivot.ggp %>% filter(.data$Pf_category %in% .env$input$dist) %>% arrange(Date) %>%
+#                 ggplot(aes(x=Date,y=cum.ret,group=Pf_category,color=Pf_category))+geom_line(show.legend = FALSE, size=1) + geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)+ geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5) +
+#             theme_gray()+ annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .1) +labs(title = "Growth of $1",x = NULL,  y = NULL) +theme(plot.title = element_text(face = "bold",size = 20))})
+#             #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)
+#             # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
+#             # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
+#         # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
+#         # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
 # 
-#              #category<-reactiveValues(input$dist)
-#              #ss<-dim(tablea[1])
-#              #ss<-2
-#             
-#              lapply(1:ss, function(a) {
-#                 
-#                 valueBox(subtitle = NULL ,value=tags$p(paste0(round(tablea[[a,2]]*100,1),"%"),style = "font-size: 50%;"),icon=NULL,color = "purple")})
-#             })
-# #
-#     output$returnBox2 <- renderUI({
-#       
-#       tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
-#         select(Pf_category,Risk_3_yrs,Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
-#       ss <- (length(tablea$Risk_3_yrs))
-#       
-#       #category<-reactiveValues(input$dist)
-#       #ss<-dim(tablea[1])
-#       #ss<-2
-#       
-#       lapply(1:ss, function(a) {
+#         output$plot2 <- renderPlot({ place_plot2() })
+#     
+#         output$plot3 <-renderPlot({
+#           
+#           dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
+#           ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
+#           #table.AnnualizedReturns(return_xts, scale = NA, Rf = 0, geometric = TRUE, digits = 4)
+#           chart.Drawdown(ret.stream.pivot_xts,wealth.index=TRUE, main="Drawdown", plot.engine = "ggplot2")
+#           
+#         })
 #         
-#         valueBox(subtitle = NULL,value=tags$p(paste0(round(tablea[[a,2]]*1,1),"%"),style = "font-size: 50%;"),icon=NULL,color = "purple")})
-#     })        
-#     output$returnBox3 <- renderUI({
-#       
-#       tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
-#         select(Pf_category,Sharpe_3_yrs,Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
-#       ss <- (length(tablea$Sharpe_3_yrs))
-#       
-#       #category<-reactiveValues(input$dist)
-#       #ss<-dim(tablea[1])
-#       #ss<-2
-#       
-#       lapply(1:ss, function(a) {
 #         
-#         valueBox(subtitle = NULL,value=tags$p(paste0(round(tablea[[a,2]]*1,1),""),style = "font-size: 50%;"),icon=NULL,color = "purple")})
-#     })  
-        
-        ret.stream.pivot.1 <- ret.stream.pivot %>% filter(Pf_category == "Conservative") %>% select(Date,Return)
-        ret.stream.pivot.11<-xts(x = ret.stream.pivot.1[, -1],order.by = as.Date(data$Date))
-        fdd.1<-table.Drawdowns(ret.stream.pivot.11)
-    
-        place_plot1<- reactive({ret.stream.pivot.ggp %>% filter(.data$Pf_category %in% .env$input$dist) %>% arrange(Date) %>%
-                ggplot(aes(x=Date,y=cum.ret,group=Pf_category,color=Pf_category))+geom_line(show.legend = FALSE, size=1) + geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)+ geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5) +
-            theme_gray()+ annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .1) +labs(title = "Growth of $1",x = NULL,  y = NULL) +theme(plot.title = element_text(face = "bold",size = 20))})
-            #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)
-            # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
-            # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
-        # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
-        # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
-
-        output$plot1 <- renderPlot({ place_plot1() })
-    
-        output$plot2 <-renderPlot({
-          
-          dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
-          ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
-          #table.AnnualizedReturns(return_xts, scale = NA, Rf = 0, geometric = TRUE, digits = 4)
-          chart.Drawdown(ret.stream.pivot_xts,wealth.index=TRUE, main="Drawdown", plot.engine = "ggplot", legend.loc = NULL)
-          
-        })
-        
-        
-        output$table1 <-renderPlot({
-          
-          
-        tablea <- dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% 
-          summarise(Fund_Return_3_yrs=sum(round(Pf_alloc*fund_return_3years*100,0)), Risk_3_yrs=sum(round(Pf_alloc*fund_stdev_3years,0)), Sharpe_3_yrs=sum(round(Pf_alloc*fund_sharpe_ratio_3years,1)), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
-                      select(Pf_category, Fund_Return_3_yrs, Risk_3_yrs, Sharpe_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
-          
-          
-        tableb<-pivot_longer(tablea,cols = ends_with("yrs"),names_to="stats",values_to="values")
-        
-        level_order <- factor(tableb$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
-        
-        ggplot(tableb, aes(x = Pf_category, y = level_order, fill = factor(Pf_category))) + geom_tile(color = "white") + geom_text(aes(label = values), color = "white", fontface="bold", size=9) +
-          labs(x = NULL, y = NULL,title = "3-year Metrics")+  scale_y_discrete(labels=c('Sharpe Ratio','Volatility','Return')) + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() )
-          
-        })
-        
-        
-        
-        
-        
-        
-        
-    }
+#         output$table1 <-renderPlot({
+#           
+#           
+#         tablea <- dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% 
+#           summarise(Fund_Return_3_yrs=sum(round(Pf_alloc*fund_return_3years*100,0)), Risk_3_yrs=sum(round(Pf_alloc*fund_stdev_3years,0)), Sharpe_3_yrs=sum(round(Pf_alloc*fund_sharpe_ratio_3years,1)), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
+#                       select(Pf_category, Fund_Return_3_yrs, Risk_3_yrs, Sharpe_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
+#           
+#           
+#         tableb<-pivot_longer(tablea,cols = ends_with("yrs"),names_to="stats",values_to="values")
+#         
+#         level_order <- factor(tableb$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
+#         
+#         ggplot(tableb, aes(x = Pf_category, y = level_order, fill = factor(Pf_category))) + geom_tile(color = "white") + geom_text(aes(label = values), color = "white", fontface="bold", size=9) +
+#           labs(x = NULL, y = NULL,title = "3-year Metrics")+  scale_y_discrete(labels=c('Sharpe Ratio','Volatility','Return')) + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() )
+#           
+#         })
+#         
+#         level_order_asset <- unique(factor(asset_alloc.pivot$Asset_Type, level = c('Stocks','Bonds','Convertible','Cash','Preferred','Others')))
+#         
+#         place_plot1<- reactive({asset_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
+#             ggplot(aes(x=Pf_category,y=reorder(Asset_Type,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_distiller(palette = "Spectral") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Asset Allocation") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+#         #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)  #scale_fill_distiller(palette = "Spectral") scale_fill_fermenter(n.breaks = 9, palette = "PuOr")
+#         # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
+#         # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
+#         # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
+#         # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
+#         
+#         output$plot1 <- renderPlot({ place_plot1() })
+#         
+#         
+#         
+#         
+#         
+#     }
 
 #icon = tags$i(class="fas fa-arrows-up-to-line", style="font-size: 24px; color: white")
 #<i class="fa-duotone fa-meteor"></i>
-shinyApp(ui, server)    
+#shinyApp(ui, server)    
     
-#     fluidPage(
+ui <-fluidPage(
 #     
-#     # App title ----
-#     titlePanel("Portfolio Comparison Visualization"),
-#     
-#     # Sidebar layout with input and output definitions ----
-#     sidebarLayout(
-#         
-#         # Sidebar panel for inputs ----
-#         sidebarPanel(
-#             
-#             # Input: Select the tolerance type ----
-#             #radioButtons("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate"),
-#             checkboxGroupInput("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate")),
-#         # br() element to introduce extra vertical spacing ----
-#         
-#         
-#         
-#         # Main panel for displaying outputs ----
-#         mainPanel(
-#             
-#             # Output: Tabset w/ plot, summary, and table ----
-#             tabsetPanel(type = "tabs",
-#                         tabPanel("Summary", fluidRow(column(12,tableOutput('table10'))
-#                                                      
-#                         ),
-#                         fluidRow(
-#                             column(6,plotOutput('plot1')),
-#                             column(6,plotOutput('plot2'))
-#                         ),
-#                         fluidRow(
-#                             column(3,plotOutput('plot3')),
-#                             column(3,plotOutput('plot4')),
-#                             column(3,plotOutput('plot5')),
-#                             column(3,plotOutput('plot6'))
-#                             
-#                         )),
-#                         
-#                         tabPanel("Performance Overview", tableOutput('table1')),
-#                         
-#                         tabPanel("Risk Analysis", tableOutput("table"))
-#             )
-#             
-#         )
-#     )
-#     
-#     
-# )
+    # App title ----
+    titlePanel(h1("Portfolio Comparison Visualization Tool", style='background-color:#BD9060;padding-left: 15px')),
+
+      
+    # Sidebar layout with input and output definitions ----
+    sidebarLayout(
+
+        # Sidebar panel for inputs ----
+        sidebarPanel(width=2,
+          tags$style(".well {background: #7b899e;border: 0px;}"),
+            # Input: Select the tolerance type ----
+            #radioButtons("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate"),
+            checkboxGroupInput("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate")),
+        # br() element to introduce extra vertical spacing ----
+
+
+
+        # Main panel for displaying outputs ----
+        mainPanel(
+
+            # Output: Tabset w/ plot, summary, and table ----
+            tabsetPanel(type = "tabs",
+                        tabPanel("Summary", 
+                        hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                        fluidRow(
+                            column(4,plotOutput('table1')),
+                            column(4,plotOutput('plot1')),
+                            column(4,plotOutput('plot2')),
+                        ),
+                        hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                        fluidRow(
+                            column(6,plotOutput('plot3')),
+                            br(),
+                            column(6,plotOutput('plot4'))
+                        )
+                        ),
+
+                        tabPanel("Performance Overview", plotOutput('plot5')),
+
+                        tabPanel("Risk Analysis", tableOutput("table"))
+            )
+
+        )
+    )
+
+
+)
 
 # Define server logic required to draw a histogram
-# server <- function(input, output) {
-#     
-#     #observeEvent(input$dist, {data <- ret.stream.pivot() %>% filter(Pf_category %in% input$dist) %>% select(Date, Return) %>% mutate(cum.ret=1*(cumprod(1+Return)))})    
-#     
-#     
-#     #output$check1 <- reactiveValues(checkbox = NULL)
-#     #observeEvent(input$checkbox, {data <- pivot_wider(ret.stream.pivot,names_from=Pf_category,values_from = Return)})
-#     #output$check1<-renderText({ input$checkbox })
-#     #if(input$checkbox == TRUE){data <- ret.stream.pivot %>% filter(Pf_category == input$dist) %>% select(Date, Return)} 
-#     #else {data <- pivot_wider(ret.stream.pivot,names_from=Pf_category,values_from = Return)}
-#     
-#     #output$value <- renderPrint({ input$checkbox })
-#     #data<-xts(x = data[, -1],order.by = as.Date(data$Date))
-#     #data <- reactive(ret.stream.pivot %>% filter(Pf_category %in% input$dist) %>% pivot_wider(names_from=Pf_category,values_from = Return)) 
-#     #ret.stream.pivot_xts<-xts(x = data[, -1],order.by = as.Date(data$Date))
-#     
-#     #data <- reactive(pivot_wider(data,names_from=Pf_category,values_from = Return))
-#     #return_xts <- reactive(xts(x = data[, -1],order.by = as.Date(data$Date)))
-#     
-#     place_plot1<- reactive({ret.stream.pivot.ggp %>% filter(.data$Pf_category %in% .env$input$dist) %>% arrange(Date) %>%
-#             ggplot(aes(x=Date,y=cum.ret,group=Pf_category,color=Pf_category))+geom_line(show.legend = TRUE) +theme_gray() })
-#     # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
-#     # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
-#     
-#     output$plot1 <- renderPlot({ place_plot1() })
-#     
-#     output$table1 <- renderTable({
-#         #dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
-#         #ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
-#         #tablea=table.Stats(ret.stream.pivot_xts, ci = 0.95, digits = 4)
-#         #tbl1<-tablea
-#         #vec<-c("Minimum","Maximum","Geometric Mean","Stdev")
-#         #vec<-c("Stdev")
-#         #data_new1 <- tablea[match(vec, row.names(tablea)), ]
-#         #data_new1
-#         
-#         tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
-#             select(Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs)) 
-#         
-#         #data_new1<-as.data.frame(data_new1)
-#         #data_new1 <-data_new1[row.names(data_new1) %in% c("Stdev"), ]
-#         #tablea<-tablea[row.names(tablea) %in% c("Minimum","Maximum","Geometric Mean","Stdev"), ]
-#         #tablea<-as.tibble(tablea)
-#         #tablea
-#         #
-#         #tablea[order(factor(row.names(tablea)%in% c("Minimum","Maximum","Geometric Mean","Stdev"), levels=c("Minimum","Maximum","Geometric Mean","Stdev"))),]
-#         #data_new1
-#     }) #, include.rownames = TRUE
-#     # output$plot2 <- renderPlot({
-#     #     dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
-#     #     ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
-#     #     #table.AnnualizedReturns(return_xts, scale = NA, Rf = 0, geometric = TRUE, digits = 4)
-#     #     chart.CumReturns(ret.stream.pivot_xts,wealth.index=TRUE, main="Historical Performance - Growth of $1", legend.loc = 'top' ,colorset=c("firebrick", "darkgreen", "navy"))
-#     # 
-#     # 
-#     # })
-#     
-#     output$plot2 <-renderPlot({
-#         
-#         dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
-#         ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
-#         #table.AnnualizedReturns(return_xts, scale = NA, Rf = 0, geometric = TRUE, digits = 4)
-#         chart.Drawdown(ret.stream.pivot_xts,wealth.index=TRUE, main="Drawdown", plot.engine = "ggplot2", legend.loc = NULL)
-#         
-#     })
-#     
-#     #output$txt1 <-renderTable({data()})
-#     
-# }
-# 
-# # Run the application 
-# shinyApp(ui = ui, server = server)
+server <- function(input, output) {
+  
+  #Growth plot
+  ret.stream.pivot.1 <- ret.stream.pivot %>% filter(Pf_category == "Conservative") %>% select(Date,Return)
+  ret.stream.pivot.11<-xts(x = ret.stream.pivot.1[, -1],order.by = as.Date(data$Date))
+  fdd.1<-table.Drawdowns(ret.stream.pivot.11)
+  
+  
+  place_plot3<- reactive({ret.stream.pivot.ggp %>% filter(.data$Pf_category %in% .env$input$dist) %>% arrange(Date) %>%
+      ggplot(aes(x=Date,y=cum.ret,group=Pf_category,color=Pf_category))+geom_line(show.legend = FALSE, size=1) + geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)+ geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5) +
+      theme_gray()+ annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .1) +labs(title = "Growth of $1", subtitle = "and drawdowns",x = NULL,  y = NULL) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),plot.title = element_text(face = "bold",size = 20))})
+  #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)
+  # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
+  # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
+  # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
+  # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
+  
+  output$plot3 <- renderPlot({ place_plot3() })
+  
+  #Drawdown Plot
+  output$plot4 <-renderPlot({
+    
+    dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
+    ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
+    #table.AnnualizedReturns(return_xts, scale = NA, Rf = 0, geometric = TRUE, digits = 4)
+    chart.Drawdown(ret.stream.pivot_xts,wealth.index=TRUE, main="Drawdown", plot.engine = "ggplot2")
+    
+  })
+  
+  #metrics table
+  output$table1 <-renderPlot({
+    
+    
+    tablea <- dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% 
+      summarise(Fund_Return_3_yrs=sum(round(Pf_alloc*fund_return_3years*100,0)), Risk_3_yrs=sum(round(Pf_alloc*fund_stdev_3years,0)), Sharpe_3_yrs=sum(round(Pf_alloc*fund_sharpe_ratio_3years,1)), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
+      select(Pf_category, Fund_Return_3_yrs, Risk_3_yrs, Sharpe_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
+    
+    
+    tableb<-pivot_longer(tablea,cols = ends_with("yrs"),names_to="stats",values_to="values")
+    
+    level_order <- factor(tableb$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
+    
+    ggplot(tableb, aes(x = Pf_category, y = level_order, fill = factor(Pf_category))) + geom_tile(color = "white") + geom_text(aes(label = values), color = "white", fontface="bold", size=9) +
+      labs(x = NULL, y = NULL,title = "3-year Metrics")+  scale_y_discrete(labels=c('Sharpe Ratio','Volatility (%)','Return (%)')) + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() )
+    
+  })
+  
+  
+  #Asset allocation table
+  level_order_asset <- unique(factor(asset_alloc.pivot$Asset_Type, level = c('Stocks','Bonds','Convertible','Cash','Preferred','Others')))
+  
+  place_plot1<- reactive({asset_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
+      ggplot(aes(x=Pf_category,y=reorder(Asset_Type,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_distiller(palette = "Spectral") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Current Asset Allocation (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+  #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)  #scale_fill_distiller(palette = "Spectral") scale_fill_fermenter(n.breaks = 9, palette = "PuOr")
+  # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
+  # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
+  # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
+  # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
+  
+  output$plot1 <- renderPlot({ place_plot1() })
+
+  
+  #facet_grid(fct_relevel(Pf_category,'Aggressive','Moderate','Conservative') ~ fct_relevel(fund_strategy,'U.S. Equity','Sector Equity','International Equity','Taxable Bond', 'Municipal Bond', 'Alternative'))
+
+  place_plot5<- reactive({asset_alloc_strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
+      #ggplot(aes(x=reorder(Asset_Type,Allocation),y=round(Allocation*100,0),fill=fund_strategy))+  geom_bar(stat = 'identity', position = 'stack') + guides(x = guide_axis(angle = 45)) + facet_grid(~ Pf_category)+labs(x = NULL, y = NULL,title = NULL) + scale_x_discrete(position = "bottom") + theme(text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+      ggplot(aes(x=Pf_category,y=fund_strategy,fill=Allocation))+ geom_tile(color = "white") +scale_fill_gradient2(low = "#DCDCDC", mid= "#F5DEB3", high = "#DAA520", midpoint=.02) + guides(x = guide_axis(angle = 90)) + facet_grid(~ fct_relevel(Asset_Type,'Stocks','Bonds','Convertible','Cash','Preferre','Others'))+labs(x = NULL, y = NULL,title = NULL) + scale_x_discrete(position = "bottom") + theme(text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank() ) })
+  
+  output$plot5 <- renderPlot({ place_plot5() })  
+  
+  
+  #scale_fill_gradient2(low = "yellow",mid = "green",high = "orange",midpoint = .02)
+  
+  
+    #observeEvent(input$dist, {data <- ret.stream.pivot() %>% filter(Pf_category %in% input$dist) %>% select(Date, Return) %>% mutate(cum.ret=1*(cumprod(1+Return)))})
+
+
+    #output$check1 <- reactiveValues(checkbox = NULL)
+    #observeEvent(input$checkbox, {data <- pivot_wider(ret.stream.pivot,names_from=Pf_category,values_from = Return)})
+    #output$check1<-renderText({ input$checkbox })
+    #if(input$checkbox == TRUE){data <- ret.stream.pivot %>% filter(Pf_category == input$dist) %>% select(Date, Return)}
+    #else {data <- pivot_wider(ret.stream.pivot,names_from=Pf_category,values_from = Return)}
+
+    #output$value <- renderPrint({ input$checkbox })
+    #data<-xts(x = data[, -1],order.by = as.Date(data$Date))
+    #data <- reactive(ret.stream.pivot %>% filter(Pf_category %in% input$dist) %>% pivot_wider(names_from=Pf_category,values_from = Return))
+    #ret.stream.pivot_xts<-xts(x = data[, -1],order.by = as.Date(data$Date))
+
+    #data <- reactive(pivot_wider(data,names_from=Pf_category,values_from = Return))
+    #return_xts <- reactive(xts(x = data[, -1],order.by = as.Date(data$Date)))
+
+    # place_plot1<- reactive({ret.stream.pivot.ggp %>% filter(.data$Pf_category %in% .env$input$dist) %>% arrange(Date) %>%
+    #         ggplot(aes(x=Date,y=cum.ret,group=Pf_category,color=Pf_category))+geom_line(show.legend = TRUE) +theme_gray() })
+    # # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
+    # # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
+    # 
+    # output$plot1 <- renderPlot({ place_plot1() })
+    # 
+    # output$table1 <- renderTable({
+    #     #dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
+    #     #ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
+    #     #tablea=table.Stats(ret.stream.pivot_xts, ci = 0.95, digits = 4)
+    #     #tbl1<-tablea
+    #     #vec<-c("Minimum","Maximum","Geometric Mean","Stdev")
+    #     #vec<-c("Stdev")
+    #     #data_new1 <- tablea[match(vec, row.names(tablea)), ]
+    #     #data_new1
+    # 
+    #     tablea<-dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
+    #         select(Fund_Return_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
+    # 
+    #     #data_new1<-as.data.frame(data_new1)
+    #     #data_new1 <-data_new1[row.names(data_new1) %in% c("Stdev"), ]
+    #     #tablea<-tablea[row.names(tablea) %in% c("Minimum","Maximum","Geometric Mean","Stdev"), ]
+    #     #tablea<-as.tibble(tablea)
+    #     #tablea
+    #     #
+    #     #tablea[order(factor(row.names(tablea)%in% c("Minimum","Maximum","Geometric Mean","Stdev"), levels=c("Minimum","Maximum","Geometric Mean","Stdev"))),]
+    #     #data_new1
+    # }) #, include.rownames = TRUE
+    # # output$plot2 <- renderPlot({
+    # #     dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
+    # #     ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
+    # #     #table.AnnualizedReturns(return_xts, scale = NA, Rf = 0, geometric = TRUE, digits = 4)
+    # #     chart.CumReturns(ret.stream.pivot_xts,wealth.index=TRUE, main="Historical Performance - Growth of $1", legend.loc = 'top' ,colorset=c("firebrick", "darkgreen", "navy"))
+    # #
+    # #
+    # # })
+    # 
+    # output$plot2 <-renderPlot({
+    # 
+    #     dt_plot <- ret.stream.pivot %>% filter(Pf_category %in% input$dist)  %>% pivot_wider(names_from=Pf_category,values_from = Return)
+    #     ret.stream.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
+    #     #table.AnnualizedReturns(return_xts, scale = NA, Rf = 0, geometric = TRUE, digits = 4)
+    #     chart.Drawdown(ret.stream.pivot_xts,wealth.index=TRUE, main="Drawdown", plot.engine = "ggplot2", legend.loc = NULL)
+    # 
+    # })
+    # 
+    #output$txt1 <-renderTable({data()})
+
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
