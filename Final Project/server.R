@@ -272,7 +272,9 @@ shinyServer(function(input, output, session) {
     
     level_order <- factor(tablea$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
     
-    ggplot(tablea, aes(x = Pf_category, y = level_order, fill = factor(Pf_category))) + geom_tile(color = "white") + geom_text(aes(label = values), color = "white", fontface="bold", size=9) +
+    level_order_2<-factor(tablea$Pf_category, level= c("Aggressive","Moderate","Conservative"))
+    
+    ggplot(tablea, aes(x = level_order_2, y = level_order, fill = factor(Pf_category))) + geom_tile(color = "white") + geom_text(aes(label = values), color = "white", fontface="bold", size=9) +
       labs(x = NULL, y = NULL,title = "3-year Metrics")+  scale_y_discrete(labels=c('Sharpe Ratio','Volatility (%)','Return (%)')) + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() )
     
   })
@@ -281,48 +283,67 @@ shinyServer(function(input, output, session) {
   #Asset allocation table
   
   #by Asset Allocation
-  level_order_asset <- unique(factor(asset_alloc.pivot$Asset_Type, level = c('Stocks','Bonds','Convertible','Cash','Preferred','Others')))
+  #level_order_asset <- unique(factor(asset_alloc.pivot$Asset_Type, level = c('Stocks','Bonds','Convertible','Cash','Preferred','Others')))
+  #level_order_2<-unique(factor(asset_alloc.pivot$Pf_category, level= c("Aggressive","Moderate","Conservative")))
   
-  place_plot1<- reactive({asset_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
-      ggplot(aes(x=Pf_category,y=reorder(Asset_Type,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_distiller(palette = "Spectral") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Current Asset Allocation (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
-  #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)  #scale_fill_distiller(palette = "Spectral") scale_fill_fermenter(n.breaks = 9, palette = "PuOr")
-  # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
-  # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
-  # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
-  # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
+  #place_plot1<- reactive({asset_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
+  #    ggplot(aes(x=Pf_category,y=reorder(Asset_Type,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_gradient(low = "#ADD8E6",high = "#FF7F50") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Current Asset Allocation (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
   
-  output$plot1 <- renderPlot({ place_plot1() })
+
+  
+  output$plot1 <- renderPlot({ 
+    
+    tablea<- asset_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist)
+    level_order_2<-factor(tablea$Pf_category, level= c("Aggressive","Moderate","Conservative"))
+    ggplot(tablea,aes(x=level_order_2,y=reorder(Asset_Type,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_gradient(low = "#ADD8E6",high = "#FF7F50") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Current Asset Allocation (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) 
+      #place_plot1() 
+  
+    })
   
   #By rating
   #level_order_ratings <- factor(rating_alloc.pivot$Ratings, level = c('AAA','AA','A','BBB','BB','B','BELOW B','OTHERS'))
   
-  place_plot4<- reactive({rating_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>% 
-      ggplot(aes(x=Pf_category,y=reorder(Ratings,rtg),group=Pf_category,fill=Allocation))+  scale_fill_distiller(palette = "Spectral") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Bond Ratings Breakdown (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 20),text = element_text(size=16),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
-  #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)  #scale_fill_distiller(palette = "Spectral") scale_fill_fermenter(n.breaks = 9, palette = "PuOr")
-  # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
-  # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
-  # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
-  # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
+  #place_plot4<- reactive({rating_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>% 
+  #    ggplot(aes(x=Pf_category,y=reorder(Ratings,rtg),group=Pf_category,fill=Allocation))+  scale_fill_gradient(low = "#ADD8E6",high = "#FF7F50") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Bond Ratings Breakdown (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 20),text = element_text(size=16),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+
   
-  output$plot4 <- renderPlot({ place_plot4() })
+  output$plot4 <- renderPlot({ 
+    tablea<-rating_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist)
+    level_order_2<-factor(tablea$Pf_category, level= c("Aggressive","Moderate","Conservative"))
+    ggplot(tablea,aes(x=level_order_2,y=reorder(Ratings,rtg),group=Pf_category,fill=Allocation))+  scale_fill_gradient(low = "#F0F8FF",high = "#FF7F50") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Bond Ratings Breakdown (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 20),text = element_text(size=18),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+                                                                                                                              #"#ADD8E6"
+    
+    #place_plot4() })
   
   #by equity sector
-  place_plot5<- reactive({sec_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>% 
-      ggplot(aes(x=Pf_category,y=reorder(Sector,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_distiller(palette = "Spectral") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Equity Sector Breakdown (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 20),text = element_text(size=16),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+  
+  #place_plot5<- reactive({sec_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>% 
+  #    ggplot(aes(x=Pf_category,y=reorder(Sector,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_distiller(palette = "Spectral") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color = "white", fontface="bold", size=8)+labs(x = NULL, y = NULL,title = "Equity Sector Breakdown (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 20),text = element_text(size=16),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
   #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)  #scale_fill_distiller(palette = "Spectral") scale_fill_fermenter(n.breaks = 9, palette = "PuOr")
   # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
   # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
   # chart.CumReturns(return_xts,wealth.index=TRUE, main="Growth of $1")
   # return_xts <- xts(x = data[, -1],order.by = as.Date(data$Date))
   
-  output$plot5 <- renderPlot({ place_plot5() }) 
+  output$plot5 <- renderPlot({ 
+    tablea<-sec_alloc.pivot %>% filter(.data$Pf_category %in% .env$input$dist)
+    level_order_2<-factor(tablea$Pf_category, level= c("Aggressive","Moderate","Conservative"))
+    ggplot(tablea,aes(x=level_order_2,y=reorder(Sector,Allocation),group=Pf_category,fill=Allocation))+  scale_fill_gradient(low = "#ADD8E6",high = "#FF7F50") + geom_tile(color = "white")+geom_text(aes(label = round(Allocation*100,0)), color="white", size=6)+labs(x = NULL, y = NULL,title = "Equity Sector Breakdown (%)") + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 20),text = element_text(size=18),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
+  
+    #place_plot5() }) 
   
   #by Strategy
-  place_plot6<- reactive({asset_alloc_strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
+  #place_plot6<- reactive({asset_alloc_strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>%
       #ggplot(aes(x=reorder(Asset_Type,Allocation),y=round(Allocation*100,0),fill=fund_strategy))+  geom_bar(stat = 'identity', position = 'stack') + guides(x = guide_axis(angle = 45)) + facet_grid(~ Pf_category)+labs(x = NULL, y = NULL,title = NULL) + scale_x_discrete(position = "bottom") + theme(text = element_text(size=12),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() ) })
-      ggplot(aes(x=Pf_category,y=fund_strategy,fill=Allocation))+ geom_tile(color = "white") +scale_fill_gradient2(low = "#FFFFFF", mid= "#F5F5F5", high = "#DAA520", midpoint=.02) + guides(x = guide_axis(angle = 90)) + facet_grid(~ fct_relevel(Asset_Type,'Stocks','Bonds','Convertible','Cash','Preferred','Others'))+labs(x = NULL, y = NULL,title = "Strategy Asset Allocation Breakdown") + scale_x_discrete(position = "bottom") + theme(plot.title = element_text(face = "bold",size=20), text = element_text(size=16),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank() ) })
+ #     ggplot(aes(x=Pf_category,y=fund_strategy,fill=Allocation))+ geom_tile(color = "white") +scale_fill_gradient2(low = "#FFFFFF", mid= "#F5F5F5", high = "#DAA520", midpoint=.02) + guides(x = guide_axis(angle = 90)) + facet_grid(~ fct_relevel(Asset_Type,'Stocks','Bonds','Convertible','Cash','Preferred','Others'))+labs(x = NULL, y = NULL,title = "Strategy Asset Allocation Breakdown") + scale_x_discrete(position = "bottom") + theme(plot.title = element_text(face = "bold",size=20), text = element_text(size=18),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank() ) })
   
-  output$plot6 <- renderPlot({ place_plot6() })  
+  output$plot6 <- renderPlot({ 
+    tablea<-asset_alloc_strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist)
+    level_order_2<-factor(tablea$Pf_category, level= c("Aggressive","Moderate","Conservative"))
+    ggplot(tablea,aes(x=level_order_2,y=fund_strategy,fill=Allocation))+ geom_tile(color = "white") + scale_fill_gradient(low = "#FFFFFF",high = "#FF7F50") + guides(x = guide_axis(angle = 90)) + facet_grid(~ fct_relevel(Asset_Type,'Stocks','Bonds','Convertible','Cash','Preferred','Others'))+labs(x = NULL, y = NULL,title = "Strategy Asset Allocation Breakdown") + scale_x_discrete(position = "bottom") + theme(plot.title = element_text(face = "bold",size=20), text = element_text(size=16),legend.position = "right", axis.ticks =element_blank(), panel.grid.major =element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank() ) })
+  #scale_fill_gradient2(low = "#FFFFFF", mid= "#F5F5F5", high = "#DAA520", midpoint=.02)
+    
+    #place_plot6() })  
   
   
   

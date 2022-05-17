@@ -1,4 +1,10 @@
+library(tidyverse)
+library(markdown)
 library(shiny)
+library(shinydashboard)
+library(quantmod)
+library(PerformanceAnalytics)
+library(collapsibleTree)
 
 # ui ----
 risk_levels<-c("Conservative","Moderate","Aggressive")
