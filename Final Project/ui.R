@@ -1,6 +1,7 @@
 library(shiny)
 
 # ui ----
+risk_levels<-c("Conservative","Moderate","Aggressive")
 shinyUI(fluidPage(
   #     
   # App title ----
@@ -83,22 +84,24 @@ shinyUI(fluidPage(
                            fluidRow(
                              column(12,plotOutput('plot11'))
                            ),
-                           hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
-                           fluidRow(
-                             column(12,plotOutput('plot12'))
-                           )
+                           # hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
+                           # fluidRow(
+                           #   column(12,plotOutput('plot12'))
+                           # )
                            
                   ),
                   tabPanel("Fund Scorecard",
                            hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
                            fluidRow(
-                             column(12,tableOutput('table2'))
+                             column(4,tableOutput('table2')),
+                             column(4,plotOutput('plot12')),
+                             column(4,plotOutput('plot13'))
                            ),
-                           hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
                            fluidRow(
-                             column(12,tableOutput('table3'))
+                             column(4,plotOutput('plot14')),
+                             column(4,plotOutput('plot15'))
+                             #column(4,plotOutput('plot16'))
                            )
-                           
                   )
       )
       

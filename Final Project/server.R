@@ -99,6 +99,8 @@ alloc<-1/18
 # basic return and risk
 dt %>% group_by(Pf_category)%>%summarise(Fund_Return_3_yrs=sum(Pf_alloc*fund_return_3years), Risk_3_yrs=sum(Pf_alloc*fund_stdev_3years), Sharpe_3_yrs=sum(Pf_alloc*fund_sharpe_ratio_3years), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
   arrange(desc(Fund_Return_3_yrs))
+
+
 #Return streams
 
 #Pf_Category
@@ -146,6 +148,23 @@ ret.stream.strat.pivot[,5]=dattt
 colnames(ret.stream.strat.pivot)[5]<-"Date"
 ret.stream.strat.pivot$Date<-as.Date(ret.stream.strat.pivot$Date, "%m/%d/%Y")
 ret.stream.strat.pivot <- subset(ret.stream.strat.pivot, select=c(5,4,1,2))
+
+
+# Fund return
+ret.stream.fund<-dt%>%select(fund_short_name,ends_with(c('_q1','_q2','_q3','_q4'))) #%>% summarize(across(everything(), list(sum)))
+ret.stream.fund<-as.data.frame(ret.stream.fund)
+ret.stream.fund.pivot<-pivot_longer(ret.stream.fund,2:88,names_to = "temp",values_to="Return")
+#Date conversion
+tttt<-unlist(ret.stream.fund.pivot[2])
+dddd<-if_else(str_sub(tttt,18,19) %in% 'q1',"3/31/",if_else(str_sub(tttt,18,19) %in% 'q2',"6/30/",if_else(str_sub(tttt,18,19) %in% 'q3',"9/30/",if_else(str_sub(tttt,18,19) %in% 'q4',"12/31/",""))))
+yyyy<-str_sub(tttt,13,16)
+datttt<-paste(dddd,yyyy,sep="")
+ret.stream.fund.pivot[,4]=datttt
+colnames(ret.stream.fund.pivot)[4]<-"Date"
+ret.stream.fund.pivot$Date<-as.Date(ret.stream.fund.pivot$Date, "%m/%d/%Y")
+ret.stream.fund.pivot <- subset(ret.stream.fund.pivot, select=c(4,3,1))
+
+
 
 #asset allocation
 #dt.test<-dt%>%summarise(across(where(starts_with("asset_")))*1/18)
@@ -348,7 +367,7 @@ shinyServer(function(input, output, session) {
       ggplot(aes(x = round(Return*100,0), fill = Pf_category)) + geom_density(aes(fill = Pf_category, colour = Pf_category)) +
       stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), color="blue", fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
       facet_grid( fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative')) ~ .,switch="y") + scale_x_continuous(n.breaks = 10) +
-      labs(x = NULL, y = NULL,title = "Extreme Returns Comparison", subtitle = "97.5% VaR represented by the left vertical blue line") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
+      labs(x = NULL, y = NULL,title = "Return Distribution and Extremes", subtitle = "97.5% VaR represented by the left vertical blue line") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
   #fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative'))
   output$plot9 <- renderPlot({ place_plot9 () },height = function(){hf()*400})
   
@@ -356,52 +375,91 @@ shinyServer(function(input, output, session) {
       ggplot(aes(x = round(Return*100,0), fill = Pf_category))+ geom_density(aes(fill = Pf_category, colour = Pf_category)) +
       stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), color="blue", fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
       facet_grid(fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative')) ~ fct_relevel(fund_strategy,'U.S. Equity','Sector Equity','International Equity','Taxable Bond', 'Municipal Bond', 'Alternative'),switch="y") +
-      labs(x = NULL, y = NULL,title = "Extreme Returns Comparison by Strategy", subtitle = "97.5% VaR represented by the left vertical blue line") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
+      labs(x = NULL, y = NULL,title = "Return Distribution and Extremes by Strategy", subtitle = "97.5% VaR represented by the left vertical blue line") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
   
   
-  output$plot10 <- renderPlot({ place_plot10 () },height = function(){hg()*150})
+  output$plot10 <- renderPlot({ place_plot10 () },height = function(){hg()*180})
   
   
   
   #performance analysis
   
-  dataforplot <- reactive({ plot_data <- ret.stream.strat.pivot %>% filter(Pf_category %in% input$dist)
-  plot_data$Pf_category <- factor(plot_data$Pf_category,levels =c('Aggressive','Moderate','Conservative'))
-  return(plot_data)
-  })
-  
-  place_plot11<- reactive ({
-    ggplot(data = dataforplot(),aes(x = round(Return*100,0), fill = Pf_category)) + geom_density(aes(fill = Pf_category, colour = Pf_category)) +
-      stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), color="blue", fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
-      facet_grid( Pf_category ~ .,switch="y") + scale_x_continuous(n.breaks = 10) +
-      labs(x = NULL, y = NULL,title = "97.5% Value-at-Risk (VaR) Comparison", subtitle = "VaR represented by vertical lines") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
-  output$plot11 <- renderPlot({ place_plot11 () })
+  # dataforplot <- reactive({ plot_data <- ret.stream.strat.pivot %>% filter(Pf_category %in% input$dist)
+  # plot_data$Pf_category <- factor(plot_data$Pf_category,levels =c('Aggressive','Moderate','Conservative'))
+  # return(plot_data)
+  # })
+  # 
+  # place_plot11<- reactive ({
+  #   ggplot(data = dataforplot(),aes(x = round(Return*100,0), fill = Pf_category)) + geom_density(aes(fill = Pf_category, colour = Pf_category)) +
+  #     stat_summary( geom = "vline", orientation = "y", aes(y = 1, xintercept = after_stat(x)), color="blue", fun = function(x) {quantile(x, probs = c(0.025, 0.975))}) +
+  #     facet_grid( Pf_category ~ .,switch="y") + scale_x_continuous(n.breaks = 10) +
+  #     labs(x = NULL, y = NULL,title = "97.5% Value-at-Risk (VaR) Comparison", subtitle = "VaR represented by vertical lines") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none",axis.ticks.y = element_blank(),axis.text.y = element_blank(),panel.grid.minor =element_blank(), panel.background =element_blank()) })
+  # output$plot11 <- renderPlot({ place_plot11 () })
   
   
  # perf_data
   
-  dataforplot_12 <- reactive({ dt1 <- dt_all %>% filter(Pf_category %in% input$dist) %>% select(-fund_strategy)
+  dataforplot_11 <- reactive({ dt1 <- dt_all %>% filter(Pf_category %in% input$dist) %>% select(-fund_strategy)
   dt1$Pf_category <- factor(dt1$Pf_category,levels =c('Aggressive','Moderate','Conservative'))
   return(dt1)})
 
  
 
-  place_plot12<- reactive ({
-    ggplot(dt_all, aes(x=fund_stdev_3years,y=round(fund_return_3years*100,0)))+geom_point(data=dataforplot_12(),colour = "grey70",alpha=1, size=2) + geom_point(aes(colour = fund_strategy),alpha=1, size=2) +
+  place_plot11<- reactive ({
+    ggplot(dt_all %>% filter(Pf_category %in% input$dist), aes(x=fund_stdev_3years,y=round(fund_return_3years*100,0)))+geom_point(data=dataforplot_11(),colour = "grey70",alpha=1, size=1) + geom_point(aes(colour = fund_strategy),alpha=0.5, size=2) +
       facet_grid(fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative'))~fund_strategy,switch="y")  +
       labs(x = "Volatility", y = "Return",title = "Return & Volatility by Strategy") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none") })
   
-  #output$plot12 <- renderPlot({ place_plot12 () },height = function(){hh()*150})
-  output$plot12 <- renderPlot({
-    {if(input$perf_data == TRUE){place_plot12 () }}
+
+  output$plot11 <- renderPlot({ place_plot11 () },height = function(){hg()*250})
+    #{if(input$perf_data == TRUE){place_plot11 ()}}
     
+  
+ #scorecard
+  
+  datafortable2 <- reactive({ dt_plot <- ret.stream.fund.pivot %>% filter(fund_short_name == input$fund_name)  %>% pivot_wider(names_from=fund_short_name,values_from = Return)
+                  fund.strategy<- dt%>% filter(fund_short_name == input$fund_name) %>% select(fund_strategy)
+                  ret.stream.fund.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
+                  tableStats <-table.AnnualizedReturns(ret.stream.fund.pivot_xts,scale=4,digits = 4)
+                  tableStats[c(1,2),] <- tableStats[c(1,2),]*100
+                  tableStats[3,] <- round(tableStats[3,],2)
+                  tableStats[4,1]<-fund.strategy
+                  row.names(tableStats)[4]<-"Fund Strategy"
+                  
+                  #tableStats <-table.Arbitrary(ret.stream.fund.pivot_xts,metrics=c("Return.annualized(ret.stream.fund.pivot_xts,scale=4)","StdDev.annualized(ret.stream.fund.pivot_xts,scale=4)","VaR", "ES","maxDrawdown"),
+                  #                metricsNames=c("Average Return","Volatility", "Modified VaR","Modified Expected Shortfall","Max Drawdown"))
+                  
+                  
+                  return(tableStats)
   })
-    
+  
+  output$table2 <- renderTable({ datafortable2() },  
+                            striped = TRUE,  
+                            spacing = 'm',  
+                            digits = 2,
+                            rownames = TRUE,
+                            align = "c")
+
+  dataforplot12 <- reactive({ dt_plot <- ret.stream.fund.pivot %>% filter(fund_short_name == input$fund_name)  %>% pivot_wider(names_from=fund_short_name,values_from = Return)
+  ret.stream.fund.pivot_xts<-xts(x = dt_plot[, -1],order.by = as.Date(dt_plot$Date))
+  return(ret.stream.fund.pivot_xts)
+  })
+  
+  output$plot12 <- renderPlot({ chart.CumReturns(dataforplot12(),wealth.index = TRUE,colorset = redfocus,main="Growth of $1",begin="axis") })
+  
+  
+  output$plot13 <- renderPlot({ chart.RollingPerformance(dataforplot12(),main = "Rolling 12-Quarter Return",colorset = redfocus) })
+  
+  output$plot14 <- renderPlot({ chart.VaRSensitivity(dataforplot12(),main = "VaR Sensitivity",colorset = redfocus,methods=c("HistoricalVaR", "ModifiedVaR", "GaussianVaR")) })
+  
+  output$plot15 <- renderPlot({ chart.Drawdown(dataforplot12(),main = "Drawdown from Peak",colorset = redfocus) })
+  
+  #output$plot16 <- renderPlot({ chart.BarVaR(dataforplot12(),main = "Quarterly Returns",colorset = redfocus,methods=c("HistoricalVaR", "ModifiedVaR", "GaussianVaR")) })
+  
+  
+      
 })
- # if(!is.NULL(input$Actuals)){output$plot12 <- renderPlot({ place_plot12 () },height = function(){hh()*150})}
-  
-  
- 
+
     
       
   
