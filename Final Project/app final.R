@@ -6,6 +6,7 @@ library(shinydashboard)
 library(quantmod)
 library(PerformanceAnalytics)
 library(collapsibleTree)
+options(dplyr.summarise.inform = FALSE)
 #install.packages("collapsibleTree")
 
 #dygraph
@@ -96,7 +97,7 @@ dt[paste0(qtr.ret.q2, "_cont")] <- map2(dt %>% select(ends_with("_q2")), alloc, 
 dt[paste0(qtr.ret.q3, "_cont")] <- map2(dt %>% select(ends_with("_q3")), alloc,  ~ .x *.y)
 dt[paste0(qtr.ret.q4, "_cont")] <- map2(dt %>% select(ends_with("_q4")), alloc,  ~ .x *.y)
 
-ret.stream<-dt%>%group_by(Pf_category) %>% select(contains('_cont')) %>% summarize(across(everything(), list(sum))) #%>% ungroup() %>% data.frame()
+ret.stream<-dt%>%group_by(Pf_category) %>% select(Pf_category,contains('_cont')) %>% summarize(across(everything(), list(sum))) #%>% ungroup() %>% data.frame()
 ret.stream<-as.data.frame(ret.stream)
 ret.stream.pivot<-pivot_longer(ret.stream,2:88,names_to = "temp",values_to="Return")
 #Date conversion
@@ -139,7 +140,7 @@ ret.stream.pivot.ggp<-rbind(temp1,temp2,temp3)
 #Fund_Strategy
 #dt%>%group_by(Pf_category)%>%select(ends_with("_q1"))%>%summarize(count=n())
 
-ret.stream.strat<-dt%>%group_by(Pf_category,fund_strategy) %>% select(contains('_cont')) %>% summarize(across(everything(), list(sum)))
+ret.stream.strat<-dt%>%group_by(Pf_category,fund_strategy) %>% select(Pf_category,fund_strategy,contains('_cont')) %>% summarize(across(everything(), list(sum)))
 ret.stream.strat<-as.data.frame(ret.stream.strat)
 ret.stream.strat.pivot<-pivot_longer(ret.stream.strat,3:89,names_to = "temp",values_to="Return")
 #Date conversion
@@ -550,7 +551,7 @@ server <- function(input, output) {
   
   #Growth plot
   ret.stream.pivot.1 <- ret.stream.pivot %>% filter(Pf_category == "Conservative") %>% select(Date,Return)
-  ret.stream.pivot.11<-xts(x = ret.stream.pivot.1[, -1],order.by = as.Date(data$Date))
+  ret.stream.pivot.11<-xts(x = ret.stream.pivot.1[, -1],order.by = as.Date(ret.stream.pivot.1$Date))
   fdd.1<-table.Drawdowns(ret.stream.pivot.11)
   
   
@@ -581,14 +582,14 @@ server <- function(input, output) {
     
     tablea <- dt %>% group_by(Pf_category)%>% filter(Pf_category %in% input$dist)  %>% 
       summarise(Fund_Return_3_yrs=sum(round(Pf_alloc*fund_return_3years*100,0)), Risk_3_yrs=sum(round(Pf_alloc*fund_stdev_3years,0)), Sharpe_3_yrs=sum(round(Pf_alloc*fund_sharpe_ratio_3years,1)), Fund_Return_5_yrs=sum(Pf_alloc*fund_return_5years), Risk_5_yrs=sum(Pf_alloc*fund_stdev_5years), Sharpe_5_yrs=sum(Pf_alloc*fund_sharpe_ratio_5years))%>%
-      select(Pf_category, Fund_Return_3_yrs, Risk_3_yrs, Sharpe_3_yrs) %>% arrange(desc(Fund_Return_3_yrs))
+      select(Pf_category, Fund_Return_3_yrs, Risk_3_yrs, Sharpe_3_yrs) %>% arrange(desc(Fund_Return_3_yrs)) %>% pivot_longer(cols = ends_with("yrs"),names_to="stats",values_to="values")
     
     
-    tableb<-pivot_longer(tablea,cols = ends_with("yrs"),names_to="stats",values_to="values")
+    #tableb<-pivot_longer(tablea,cols = ends_with("yrs"),names_to="stats",values_to="values")
     
-    level_order <- factor(tableb$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
+    level_order <- factor(tablea$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
     
-    ggplot(tableb, aes(x = Pf_category, y = level_order, fill = factor(Pf_category))) + geom_tile(color = "white") + geom_text(aes(label = values), color = "white", fontface="bold", size=9) +
+    ggplot(tablea, aes(x = Pf_category, y = level_order, fill = factor(Pf_category))) + geom_tile(color = "white") + geom_text(aes(label = values), color = "white", fontface="bold", size=9) +
       labs(x = NULL, y = NULL,title = "3-year Metrics")+  scale_y_discrete(labels=c('Sharpe Ratio','Volatility (%)','Return (%)')) + scale_x_discrete(position = "top") + theme(plot.title = element_text(face = "bold", size = 25),text = element_text(size=20),legend.position = "none", axis.ticks =element_blank(), panel.grid.major =element_blank(), panel.background =element_blank() )
     
   })
@@ -674,7 +675,7 @@ server <- function(input, output) {
   
   #risk analysis
   
-  level_order <- factor(tableb$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
+  #level_order <- factor(tableb$stats, level = c('Sharpe_3_yrs', 'Risk_3_yrs', 'Fund_Return_3_yrs'))
   
   place_plot9 <- reactive({ ret.stream.strat.pivot %>% filter(.data$Pf_category %in% .env$input$dist) %>% 
       # .data$Pf_category <- factor(.data$Pf_category, level = c('Aggressive','Moderate','Conservative')) %>%
@@ -718,7 +719,7 @@ server <- function(input, output) {
                               return(dt1)})
       
   place_plot12<- reactive ({
-    ggplot(dt, aes(x=fund_stdev_3years,y=round(fund_return_3years*100,0)))+geom_point(data=dataforplot_12(),colour = "grey70",alpha=1, size=2) + geom_point(aes(colour = fund_strategy),alpha=1, size=2) +
+    ggplot(dt%>%filter(fund_strategy %in% cat.pf), aes(x=fund_stdev_3years,y=round(fund_return_3years*100,0)))+geom_point(data=dataforplot_12(),colour = "grey70",alpha=1, size=2) + geom_point(aes(colour = fund_strategy),alpha=1, size=2) +
     facet_grid(Pf_category~fund_strategy,switch="y")  +
     labs(x = "Volatility", y = "Return",title = "Return & Volatility by Strategy") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none") })
   
@@ -816,3 +817,4 @@ server <- function(input, output) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
+
