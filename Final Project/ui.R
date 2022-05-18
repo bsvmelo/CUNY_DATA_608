@@ -25,8 +25,8 @@ shinyUI(fluidPage(
                  #radioButtons("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate"),
                  checkboxGroupInput("dist","Select risk tolerance level(s):",choices=(risk_levels), selected = "Moderate"),
                  # br() element to introduce extra vertical spacing ----
-                 selectInput("fund_name", "Select a fund:", choices=NULL, selected = NULL),
-                checkboxInput("perf_data", "Display Performance Analysis Charts", value=FALSE)),
+                 selectInput("fund_name", "Select a fund:", choices=NULL, selected = NULL)),
+                 #checkboxInput("perf_data", "Display Performance Analysis Charts", value=FALSE))
     
     
     # Main panel for displaying outputs ----
@@ -85,7 +85,7 @@ shinyUI(fluidPage(
                            )
                            
                   ),
-                  tabPanel("Performance Analysis",
+                  tabPanel("Return & Risk Trade-off",
                            hr(style = "border-top: 0px solid #000000;"),hr(style = "border-top: 0px solid #000000;"),
                            fluidRow(
                              column(12,plotOutput('plot11'))

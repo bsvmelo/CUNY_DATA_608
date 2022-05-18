@@ -16,7 +16,8 @@ library(collapsibleTree)
 
 #data input
 mf.raw<-read.csv("C:/Users/atm20/OneDrive/Documents/CUNY_DATA_608/Final Project/MutualFunds.csv", sep = ",", header = TRUE, na.strings = c("N/A", ""))
-#etf.raw<-read.csv("C:/Users/atm20/OneDrive/Documents/CUNY_DATA_608/Final Project/ETFs.csv", sep = ",", header = TRUE, na.strings = c("N/A", ""))
+#mf.raw<-read.csv("https://raw.githubusercontent.com/bsvmelo/CUNY_DATA_608/master/Final%20Project/MutualFunds_redux.csv", header = TRUE, na.strings = c("N/A", ""))
+#mf.strat<-read.csv("https://raw.githubusercontent.com/bsvmelo/CUNY_DATA_608/master/Final%20Project/fund_strategy.csv", sep = ",", header = TRUE, na.strings = c("N/A", ""))
 mf.strat<-read.csv("C:/Users/atm20/OneDrive/Documents/CUNY_DATA_608/Final Project/fund_strategy.csv", sep = ",", header = TRUE, na.strings = c("N/A", ""))
 df<-mf.raw
 df<-left_join(mf.raw,mf.strat,by="fund_category")
@@ -28,11 +29,11 @@ df<-df %>% select(fund_strategy, everything())
 #Fund Category == All
 fund.cat<-unique(df$fund_category)
 #Fund Category == Target Date Funds
-fund.cat.target<- subset(df, grepl("Target-Date 2", fund_category))
-fund.cat.target<-unique(fund.cat.target$fund_category)
+#fund.cat.target<- subset(df, grepl("Target-Date 2", fund_category))
+#fund.cat.target<-unique(fund.cat.target$fund_category)
 #Fund Category == Allocation
-fund.cat.alloc<- subset(df, grepl("Allocation--", fund_category))
-fund.cat.alloc<-unique(fund.cat.alloc$fund_category)
+#fund.cat.alloc<- subset(df, grepl("Allocation--", fund_category))
+#fund.cat.alloc<-unique(fund.cat.alloc$fund_category)
 #Sectors, Rating, Asset allocation
 nms <- names(df)
 sec.eq<-colnames(df[grepl("sector_", nms)])
@@ -66,14 +67,24 @@ cat.pf<-c(cat.pf.eq, cat.pf.fi,cat.pf.alt)
 #Pf creation
 
 
+# aa<-df %>% group_by(fund_category) %>% filter(fund_stdev_3years >= quantile(fund_stdev_3years,0.75, na.rm=TRUE)) %>% ungroup() %>% 
+#   filter(fund_strategy %in% cat.pf) %>% group_by(fund_strategy) %>% mutate(Pf_category = 'Aggressive') %>% ungroup()
+# #conservative -> Standard Deviation < 25 percentile
+# bb<-df %>% group_by(fund_category) %>% filter(fund_stdev_3years <= quantile(fund_stdev_3years,0.25, na.rm=TRUE)) %>% ungroup() %>% 
+#   filter(fund_strategy %in% cat.pf) %>% group_by(fund_strategy) %>% mutate(Pf_category = 'Conservative') %>% ungroup()
+# #moderate -> Standard Deviation btw 25 & 75 percentile
+# cc<-df %>% group_by(fund_category) %>% filter(fund_stdev_3years > quantile(fund_stdev_3years,0.25, na.rm=TRUE) & fund_stdev_3years < quantile(fund_stdev_3years,0.75, na.rm=TRUE)) %>% ungroup() %>% 
+#   filter(fund_strategy %in% cat.pf) %>% group_by(fund_strategy) %>%  mutate(Pf_category = 'Moderate') %>% ungroup()
+# dt_all<-rbind(aa,bb,cc)
+
 aa<-df %>% group_by(fund_category) %>% filter(fund_stdev_3years >= quantile(fund_stdev_3years,0.75, na.rm=TRUE)) %>% ungroup() %>% 
-  filter(fund_strategy %in% cat.pf) %>% group_by(fund_strategy) %>% mutate(Pf_category = 'Aggressive') %>% ungroup()
+  mutate(Pf_category = 'Aggressive') %>% ungroup()
 #conservative -> Standard Deviation < 25 percentile
 bb<-df %>% group_by(fund_category) %>% filter(fund_stdev_3years <= quantile(fund_stdev_3years,0.25, na.rm=TRUE)) %>% ungroup() %>% 
-  filter(fund_strategy %in% cat.pf) %>% group_by(fund_strategy) %>% mutate(Pf_category = 'Conservative') %>% ungroup()
+  mutate(Pf_category = 'Conservative') %>% ungroup()
 #moderate -> Standard Deviation btw 25 & 75 percentile
 cc<-df %>% group_by(fund_category) %>% filter(fund_stdev_3years > quantile(fund_stdev_3years,0.25, na.rm=TRUE) & fund_stdev_3years < quantile(fund_stdev_3years,0.75, na.rm=TRUE)) %>% ungroup() %>% 
-  filter(fund_strategy %in% cat.pf) %>% group_by(fund_strategy) %>%  mutate(Pf_category = 'Moderate') %>% ungroup()
+  mutate(Pf_category = 'Moderate') %>% ungroup()
 dt_all<-rbind(aa,bb,cc)
 
 
@@ -235,7 +246,7 @@ shinyServer(function(input, output, session) {
   
   place_plot2<- reactive({ret.stream.pivot.ggp %>% filter(.data$Pf_category %in% .env$input$dist) %>% arrange(Date) %>%
       ggplot(aes(x=Date,y=cum.ret,group=Pf_category,color=Pf_category))+geom_line(show.legend = FALSE, size=1) + geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)+ geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5) +
-      theme_gray()+ annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .1) +labs(title = "Growth of $1", subtitle = "and drawdowns",x = NULL,  y = NULL) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),plot.title = element_text(face = "bold",size = 20))})
+      theme_gray()+ annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .1, color="white") +labs(title = "Growth of $1", subtitle = "and drawdowns",x = NULL,  y = NULL) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),plot.title = element_text(face = "bold",size = 20))})
   #  geom_vline(aes(xintercept = as.numeric(From)),data = fdd.1,colour = "grey50", alpha = 0.5)
   # + geom_vline(aes(xintercept = as.numeric(To)),data = fdd.1,colour = "grey50", alpha = 0.5)
   # + annotate("rect", xmin = fdd.1$From, xmax = fdd.1$To, ymin= -Inf, ymax=Inf, alpha = .2)})
@@ -424,15 +435,23 @@ shinyServer(function(input, output, session) {
   dt1$Pf_category <- factor(dt1$Pf_category,levels =c('Aggressive','Moderate','Conservative'))
   return(dt1)})
 
- 
+  dataforplot_11.1 <- reactive({ dt2 <- dt %>% filter(Pf_category %in% input$dist) #%>% select(-fund_strategy)
+  dt2$Pf_category <- factor(dt2$Pf_category,levels =c('Aggressive','Moderate','Conservative'))
+  return(dt2)})
+
+  # dataforplot_11 <- dt_all %>% select(-fund_strategy)
+  # dataforplot_11$Pf_category <- factor(dataforplot_11$Pf_category,levels =c('Aggressive','Moderate','Conservative'))
+
+#fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative')
+  
 
   place_plot11<- reactive ({
-    ggplot(dt_all %>% filter(Pf_category %in% input$dist), aes(x=fund_stdev_3years,y=round(fund_return_3years*100,0)))+geom_point(data=dataforplot_11(),colour = "grey70",alpha=1, size=1) + geom_point(aes(colour = fund_strategy),alpha=0.5, size=2) +
+    ggplot(dt_all %>% filter(Pf_category %in% input$dist & fund_strategy %in% cat.pf), aes(x=fund_stdev_3years,y=round(fund_return_3years*100,0)))+geom_point(data=dataforplot_11(),colour = "grey70",alpha=0.1, size=1) + geom_point(aes(colour = fund_strategy),alpha=0.5, size=1.5) + geom_point(data=dataforplot_11.1(),colour = "red",alpha=1, size=2)+
       facet_grid(fct_relevel(Pf_category,c('Aggressive','Moderate','Conservative'))~fund_strategy,switch="y")  +
       labs(x = "Volatility", y = "Return",title = "Return & Volatility by Strategy") + theme(plot.title = element_text(face = "bold",size=20),text = element_text(size=12),legend.position = "none") })
   
 
-  output$plot11 <- renderPlot({ place_plot11 () },height = function(){hg()*250})
+  output$plot11 <- renderPlot({ place_plot11 () },height = function(){hg()*180})
     #{if(input$perf_data == TRUE){place_plot11 ()}}
     
   
